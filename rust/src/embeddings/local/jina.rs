@@ -13,7 +13,7 @@ use anyhow::Error as E;
 use candle_core::{DType, Tensor};
 use candle_nn::{Module, VarBuilder};
 use hf_hub::Repo;
-
+use serde::Deserialize;
 use tokenizers::Tokenizer;
 
 pub trait JinaEmbed {
