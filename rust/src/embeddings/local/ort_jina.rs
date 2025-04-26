@@ -1,4 +1,3 @@
-use super::bert::TokenizerConfig;
 use super::jina::JinaEmbed;
 use super::pooling::{ModelOutput, PooledOutputType, Pooling};
 use super::text_embedding::{models_map, ONNXModel};
@@ -11,6 +10,7 @@ use hf_hub::Repo;
 use ndarray::prelude::*;
 use rayon::prelude::*;
 use tokenizers::{PaddingParams, Tokenizer, TruncationParams};
+use serde::Deserialize;
 
 use {
     ort::execution_providers::{CUDAExecutionProvider, CoreMLExecutionProvider, ExecutionProvider},
@@ -357,4 +357,10 @@ impl JinaEmbed for OrtJinaEmbedder {
                 .collect())
         }
     }
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct TokenizerConfig {
+    pub max_length: Option<usize>,
+    pub model_max_length: Option<usize>,
 }
