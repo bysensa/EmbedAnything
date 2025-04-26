@@ -9,8 +9,8 @@ use hf_hub::api::sync::Api;
 use hf_hub::Repo;
 use ndarray::prelude::*;
 use rayon::prelude::*;
-use tokenizers::{PaddingParams, Tokenizer, TruncationParams};
 use serde::Deserialize;
+use tokenizers::{PaddingParams, Tokenizer, TruncationParams};
 
 use {
     ort::execution_providers::{CUDAExecutionProvider, CoreMLExecutionProvider, ExecutionProvider},
@@ -162,6 +162,7 @@ impl OrtJinaEmbedder {
         let version = match (model_name, model_id) {
             (Some(ONNXModel::JINAV3), _) => "v3",
             (_, Some(id)) if id.contains("jina-embeddings-v3") => "v3",
+            (_, Some(id)) if id.contains("jina-embeddings-v2-base-code") => "v2.5",
             _ => "v2",
         };
 
@@ -245,6 +246,15 @@ impl OrtJinaEmbedder {
                     "task_id" => Array1::<i64>::from_vec(vec![4])
                 }?)?;
                 outputs["text_embeds"]
+                    .try_extract_tensor::<f32>()?
+                    .to_owned()
+                    .into_dimensionality::<ndarray::Ix3>()?
+            } else if self.version == "v2.5" {
+                let outputs = self.session.run(ort::inputs! {
+                    "input_ids" => token_ids_ndarray,
+                    "attention_mask" => attention_mask_ndarray.clone()
+                }?)?;
+                outputs["last_hidden_state"]
                     .try_extract_tensor::<f32>()?
                     .to_owned()
                     .into_dimensionality::<ndarray::Ix3>()?
