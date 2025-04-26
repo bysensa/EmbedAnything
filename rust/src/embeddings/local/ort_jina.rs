@@ -330,6 +330,15 @@ impl JinaEmbed for OrtJinaEmbedder {
                             .try_extract_tensor::<f32>()?
                             .to_owned()
                             .into_dimensionality::<ndarray::Ix3>()?
+                    } else if self.version == "v2.5" {
+                        let outputs = self.session.run(ort::inputs! {
+                            "input_ids" => token_ids,
+                            "attention_mask" => attention_mask.clone()
+                        }?)?;
+                        outputs["last_hidden_state"]
+                            .try_extract_tensor::<f32>()?
+                            .to_owned()
+                            .into_dimensionality::<ndarray::Ix3>()?
                     } else {
                         let outputs = self.session.run(ort::inputs! {
                             "input_ids" => token_ids,
