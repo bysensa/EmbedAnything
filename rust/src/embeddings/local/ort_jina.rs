@@ -1,4 +1,3 @@
-use super::bert::TokenizerConfig;
 use super::jina::JinaEmbed;
 use super::pooling::{ModelOutput, PooledOutputType, Pooling};
 use super::text_embedding::{models_map, ONNXModel};
@@ -10,6 +9,7 @@ use hf_hub::api::sync::Api;
 use hf_hub::Repo;
 use ndarray::prelude::*;
 use rayon::prelude::*;
+use serde::Deserialize;
 use tokenizers::{PaddingParams, Tokenizer, TruncationParams};
 
 use {
@@ -162,6 +162,7 @@ impl OrtJinaEmbedder {
         let version = match (model_name, model_id) {
             (Some(ONNXModel::JINAV3), _) => "v3",
             (_, Some(id)) if id.contains("jina-embeddings-v3") => "v3",
+            (_, Some(id)) if id.contains("jina-embeddings-v2-base-code") => "v2.5",
             _ => "v2",
         };
 
@@ -248,6 +249,15 @@ impl OrtJinaEmbedder {
                     .try_extract_tensor::<f32>()?
                     .to_owned()
                     .into_dimensionality::<ndarray::Ix3>()?
+            } else if self.version == "v2.5" {
+                let outputs = self.session.run(ort::inputs! {
+                    "input_ids" => token_ids_ndarray,
+                    "attention_mask" => attention_mask_ndarray.clone()
+                }?)?;
+                outputs["last_hidden_state"]
+                    .try_extract_tensor::<f32>()?
+                    .to_owned()
+                    .into_dimensionality::<ndarray::Ix3>()?
             } else {
                 let outputs = self.session.run(ort::inputs! {
                     "input_ids" => token_ids_ndarray,
@@ -320,6 +330,15 @@ impl JinaEmbed for OrtJinaEmbedder {
                             .try_extract_tensor::<f32>()?
                             .to_owned()
                             .into_dimensionality::<ndarray::Ix3>()?
+                    } else if self.version == "v2.5" {
+                        let outputs = self.session.run(ort::inputs! {
+                            "input_ids" => token_ids,
+                            "attention_mask" => attention_mask.clone()
+                        }?)?;
+                        outputs["last_hidden_state"]
+                            .try_extract_tensor::<f32>()?
+                            .to_owned()
+                            .into_dimensionality::<ndarray::Ix3>()?
                     } else {
                         let outputs = self.session.run(ort::inputs! {
                             "input_ids" => token_ids,
@@ -357,4 +376,10 @@ impl JinaEmbed for OrtJinaEmbedder {
                 .collect())
         }
     }
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct TokenizerConfig {
+    pub max_length: Option<usize>,
+    pub model_max_length: Option<usize>,
 }

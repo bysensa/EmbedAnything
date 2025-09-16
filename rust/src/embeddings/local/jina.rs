@@ -4,7 +4,6 @@ extern crate intel_mkl_src;
 #[cfg(feature = "accelerate")]
 extern crate accelerate_src;
 
-use super::bert::TokenizerConfig;
 use super::pooling::{ModelOutput, PooledOutputType, Pooling};
 use crate::embeddings::select_device;
 use crate::embeddings::utils::tokenize_batch;
@@ -14,7 +13,7 @@ use anyhow::Error as E;
 use candle_core::{DType, Tensor};
 use candle_nn::{Module, VarBuilder};
 use hf_hub::Repo;
-
+use serde::Deserialize;
 use tokenizers::Tokenizer;
 
 pub trait JinaEmbed {
@@ -250,6 +249,13 @@ impl JinaEmbed for JinaEmbedder {
             self.embed(text_batch, batch_size)
         }
     }
+}
+
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct TokenizerConfig {
+    pub max_length: Option<usize>,
+    pub model_max_length: Option<usize>,
 }
 
 #[cfg(test)]
